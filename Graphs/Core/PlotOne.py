@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sympy.strategies.core import switch
 
-from TypePlot import TypePlot
+from Core.Enum.TypePlot import TypePlot
 
 
 def ShowMy():

@@ -2,33 +2,30 @@ import asyncio
 
 import numpy as np
 import json
-from AMFM import AMFM
-from PlotOne import PlotInfoOne
-from SignalBase0 import SignalBase0, ConvertToComplex
-from TypePlot import TypePlot
+from Core.Enum.AMFM import AMFM
+from Graphs.Core.PlotOne import PlotInfoOne
+from Signal.Core.SignalBase0 import SignalBase0
+from Convert.Core import ConvertToComplex
+from Core.Enum.TypePlot import TypePlot
+from scipy.fft import fft, ifft
+from Core.Enum.TypePlot import TypePlot
+import scipy.fft
+
 
 class FMAnalysis(SignalBase0):
 	def __init__(self, **kwargs):
 		super().__init__(AMFM.FM)
 		print("__ Анализируем ФМ сигнал __")
 		self._input_dir_base = "/home/alanin/Python/Data/OUT/FM/"
-		self._dir_data = "000"
-		self._in_args = "in_args.json"
+		# self._dir_data = "000"
+		# self._in_args = "in_args.json"
 		self._name_tfpMSeqSigns = "tfpMSeqSigns.json"
-		self._out_json = "out.json"
-		self._ftps_args = "ftps.json"
-		self.__ParserArg(**kwargs)
-
-
-	def __ParserArg(self, **kwargs):
-		self._input_dir_base =  kwargs.get("InputDirDataBase", self._input_dir_base )
-		self._dir_data =  kwargs.get("DirData", self._dir_data)
-		self._path_works_data = self._input_dir_base+self._dir_data
-
+		# self._out_json = "out.json"
+		# self._ftps_args = "ftps.json"
+		self._ParserArg(**kwargs)
 
 	def set_params_strob(self, **kwargs):
-		self.__ParserArg(**kwargs)
-
+		self._ParserArg(**kwargs)
 
 	def run(self):
 		self.load_json(self._path_works_data)
@@ -36,8 +33,9 @@ class FMAnalysis(SignalBase0):
 		# self.GraphPlot(d=_d, TypePlot=TypePlot.D1Hor, xNL=2,  show="show")
 		# self.GraphAndFFTPosledPlot()	#  крылья
 		# self.GraphAndFFTPlot(d=_d, xNL=2,  show="show")
-		self.SpectrumAnd(d=_d)  # расчет FM
+		# self.SpectrumAnd_W0(d=_d)
 		# self.SignalAndOporaFFTPlot(d=_d)
+		self.SpectrumAnd(d=_d)  # расчет FM
 		k=1
 
 	def GraphAndFFTPosledPlot(self):
@@ -49,8 +47,9 @@ class FMAnalysis(SignalBase0):
 		_d[0]= (PlotInfoOne(x=self._tfpMSeqSigns), PlotInfoOne(x=_fft, Title="spectrum"))
 		super().SubPlots(d=_d)
 
-	def SpectrumAnd(self, **kwargs):
-		self._typePlot = TypePlot.D1Vert
+	def SpectrumAnd_W0(self, **kwargs):
+		""" Свертка опоры и согнала на основной частоте (от 0 отчета) """
+		self._typePlot = TypePlot.D2
 		self._show = "show"
 		self.ParserArg(**kwargs)
 		_countD = len(self._data)
@@ -61,9 +60,66 @@ class FMAnalysis(SignalBase0):
 		# """ получим значения одного луча """
 		_dx = np.array(self._data[0:_l])  # считывается все значение по лучу
 		_dx = _dx[0: self._countPosled]   # приводится к размерности БПФ
-		spectrum_inData = np.fft.fft(_dx)
+		# _fft_dx0 = scipy.fft.fft(_dx)
+		_fft_dx = scipy.fft.fft(_dx)
+		_d[0]= (PlotInfoOne(x=_dx), PlotInfoOne(x=_fft_dx, Title="signal"))
+		_d[1] = (PlotInfoOne(x=self._tfpMSeqSigns), PlotInfoOne(x= np.abs(self.FFTMSeqSigns), Title="опора"))
+		_fft_and =np.abs(_fft_dx*self.FFTMSeqSigns)
+		plot1 = np.abs(np.fft.ifft(_fft_and))
+		_d[2] = (PlotInfoOne(x=plot1), PlotInfoOne(x=_fft_and, Title="spectrum"))
+		super().SubPlots(d=_d)
+		return
 
+	def SpectrumAnd(self, **kwargs):
+		self._typePlot = TypePlot.D2
+		self._show = "show"
+		self.ParserArg(**kwargs)
+		_countD = len(self._data)
+		_nl = self.Params["NL"]
+		_kgd = self.Params["kgd"]
+		_d = {}
+		_l = self.Params["samplesNum"]
+		# """ получим значения одного луча """
+		_dx = np.array(self._data[0:_l])  # считывается все значение по лучу
+		_dx = _dx[0: self._countPosled]   # приводится к размерности БПФ
+		# _fft_dx0 = scipy.fft.fft(_dx)
+		# _fft_dx = np.abs(scipy.fft.fft(_dx))
+		_fft_dx = scipy.fft.fft(_dx)
 		n1grs = self.Params["n1grs"]
+		kgrs = self.Params["kgrs"]
+		for v in range(8):
+			# v0 = n1grs * 25000 + v * 21570
+			v0 = n1grs+v
+			if v0 < 0:
+				_fft_begin  =self.FFTMSeqSigns[ self._countPosled-abs(v0):]
+				_fft_maska = np.concatenate((_fft_begin, self.FFTMSeqSigns))
+				_fft_maska = _fft_maska[:self._countPosled]
+
+			else:
+				_fft_end  =self.FFTMSeqSigns[:v0]
+				_fft_maska = np.concatenate((self.FFTMSeqSigns, _fft_end))
+				_fft_maska = _fft_maska[v0:]
+
+			_dd =np.abs(_fft_dx *_fft_maska)
+			_dd[0]=0
+			# _dd =np.abs(self.FFTMSeqSigns *_fft_maska)
+			# _sigal_0 =np.abs(np.fft.ifft((_fft_dx*_fft_maska)))
+			_sigal_0 =np.abs(np.fft.ifft(_dd))
+			_kgd=400
+			# nfgd_fu = self.Params["nfgd_fu"]
+			# if nfgd_fu < 0:
+			# 	_sigal = _sigal_0[self._countPosled- abs(nfgd_fu):]
+			# 	_sigal = np.concatenate((_sigal, _sigal_0[:_kgd]))
+			# 	_sigal = _sigal[:_kgd]
+			# else:
+			# 	_sigal = _sigal_0[nfgd_fu:nfgd_fu+_kgd]
+
+			# _sigal = np.concatenate((_fft_begin, _sigal_0))
+
+			_d[v]= (PlotInfoOne(x=_sigal_0), PlotInfoOne(x= _dd)) #  _fft_maska
+		super().SubPlots(d=_d)
+		return
+
 		ind0 = int(round(n1grs * self.C,0)) % self._countPosled
 		# _fft_tfpMSeq_base = np.fft.fft(self._tfpMSeqSigns)
 		# _fft_MSeqBase = np.concatenate((_fft_tfpMSeq_base[ind0:] , _fft_tfpMSeq_base))
