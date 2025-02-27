@@ -1,6 +1,11 @@
 
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+from matplotlib import cbook, cm
+from matplotlib.colors import LightSource
+
 
 class Plot3DGraph:
 	def __init__(self):
@@ -27,38 +32,72 @@ class Plot3DGraph:
 
 		plt.show()
 
+	def D3Bar(self, **kwargs):
+		_d = kwargs.get("d", None)
+		if _d is None:
+			return
+		_size = _d.shape
 
+		# Данные для осей
+		y = np.array([_y for _y in range(_size[0])])
+		x = np.array([_x for _x in range(_size[1])])
+		# x = np.array([10, 20, 30])  # 3 значения для оси X
+		# y = np.array([1, 2, 3, 4, 5])  # 5 значений для оси Y
 
-'''
+		# Создаем сетку для 3D графика
+		X, Y = np.meshgrid(x, y)  # Создаем сетку для осей
+		Z = np.zeros_like(X)  # Исходная высота (0 для всех столбцов)
 
-# Fixing random state for reproducibility
-np.random.seed(19680801)
+		# Высоты столбцов (можно задать любые значения, в зависимости от вашей задачи)
+		# Z_heights = np.random.randint(1, 10, size=X.shape)  # Случайные высоты для столбцов
+		Z_heights = _d # np.random.randint(1, 10, size=X.shape)  # Случайные высоты для столбцов
 
+		# Определение ширины и глубины столбцов
+		dx = np.ones_like(Z) * 1  # Ширина столбцов по оси X
+		dy = np.ones_like(Z) * 1  # Ширина столбцов по оси Y
+		dz = Z_heights  # Высота столбцов
 
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
+		# Создание фигуры и 3D оси
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
 
-colors = ['r', 'g', 'b', 'y']
-yticks = [3, 2, 1, 0]
-for c, k in zip(colors, yticks):
-    # Generate the random data for the y=k 'layer'.
-    xs = np.arange(20)
-    ys = np.random.rand(20)
+		# Создание 3D столбчатой диаграммы
+		ax.bar3d(X.flatten(), Y.flatten(), Z.flatten(), dx.flatten(), dy.flatten(), dz.flatten(), color='g', alpha=0.7)
 
-    # You can provide either a single color or an array with the same length as
-    # xs and ys. To demonstrate this, we color the first bar of each set cyan.
-    cs = [c] * len(xs)
-    cs[0] = 'c'
+		# Настройка заголовков и меток
+		ax.set_title('3D Bar Chart with Different X and Y Lengths')
+		ax.set_xlabel('X-axis')
+		ax.set_ylabel('Y-axis')
+		ax.set_zlabel('Z-axis')
 
-    # Plot the bar graph given by xs and ys on the plane y=k with 80% opacity.
-    ax.bar(xs, ys, zs=k, zdir='y', color=cs, alpha=0.8)
+		# Отображение графика
+		plt.show()
 
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
+	def Surface(self, **kwargs):
+		_d = kwargs.get("d", None)
+		if _d is None:
+			return
+		_size = _d.shape
 
-# On the y-axis let's only label the discrete values that we have data for.
-ax.set_yticks(yticks)
+		z = _size
+		nrows, ncols = _d.shape
 
-plt.show()
-'''
+		y = np.array([_y for _y in range(_size[0])])
+		x = np.array([_x for _x in range(_size[1])])
+
+		x, y = np.meshgrid(x, y)
+
+		region = np.s_[0:_size[1], 0:_size[0]]
+		x, y, z = x[region], y[region], z[region]
+
+		# Set up plot
+		fig, ax = plt.subplots(subplot_kw=dict(projection='3d'))
+
+		ls = LightSource(270, 45)
+		# To use a custom hillshading mode, override the built-in shading and pass
+		# in the rgb colors of the shaded surface calculated from "shade".
+		rgb = ls.shade(z, cmap=cm.gist_earth, vert_exag=0.1, blend_mode='soft')
+		surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb,
+													 linewidth=0, antialiased=False, shade=False)
+
+		plt.show()
