@@ -10,6 +10,8 @@ from Core.Enum.TypePlot import TypePlot
 from scipy.fft import fft, ifft
 from Core.Enum.TypePlot import TypePlot
 import scipy.fft
+from scipy import signal
+from scipy.signal import fftconvolve
 
 
 class FMAnalysis(SignalBase0):
@@ -35,7 +37,8 @@ class FMAnalysis(SignalBase0):
 		# self.GraphAndFFTPlot(d=_d, xNL=2,  show="show")
 		# self.SpectrumAnd_W0(d=_d)
 		# self.SignalAndOporaFFTPlot(d=_d)
-		self.SpectrumAnd(d=_d)  # расчет FM
+		# self.SpectrumAnd(d=_d)  # расчет FM
+		self.CiklSwertka(d=_d)
 		k=1
 
 	def GraphAndFFTPosledPlot(self):
@@ -183,5 +186,29 @@ class FMAnalysis(SignalBase0):
 
 		super().SubPlots(d=_d)
 		stopp =1
+
+	def CiklSwertka(self, **kwargs):
+		self._typePlot = TypePlot.D2
+		self._show = "show"
+		self.ParserArg(**kwargs)
+		_countD = len(self._data)
+		_nl = self.Params["NL"]
+		_kgd = self.Params["kgd"]
+		_d = {}
+		_l = self.Params["samplesNum"]
+		_d = self._tfpMSeqSigns
+		_xx =  self._tfpMSeqSigns
+		nn=150000
+		_xEnd = _xx[len(_xx)-nn:]
+		_x0 = np.concatenate((_xEnd, _xx))
+		_x0 = _x0[:len(self._tfpMSeqSigns)]
+		cyclic_convolution = np.abs(signal.fftconvolve(self._tfpMSeqSigns, self._tfpMSeqSigns, mode='full')) # full valid same
+		# cyclic_convolution = np.abs(signal.fftconvolve(_x0, self._tfpMSeqSigns, mode='full')) # full valid same
+		# Обрезаем результат, чтобы он соответствовал размеру исходных данных
+		cyclic_convolution = cyclic_convolution[len(self._tfpMSeqSigns)-1:len(self._tfpMSeqSigns)+len(self._tfpMSeqSigns)-1]
+		_fft =  np.abs(scipy.fft.fft(cyclic_convolution))
+
+		self.OnePlotx(cyclic_convolution)
+		self.OnePlotx(_fft)  #, show="show"
 
 
