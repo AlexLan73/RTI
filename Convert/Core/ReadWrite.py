@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import json
 import re
+import pandas as pd
 
 from functools import wraps
 
@@ -24,7 +25,10 @@ def handle_file_errors(func):
 
 class ReadWrite:
 	def __init__(self):
-		pass
+		self.pathStatistik = "/home/alanin/Python/Data/Statistik/"
+		self.path_report = "/home/alanin/Python/Data/TestGPU/"
+		self.ext_pandes = ".parquet"
+		self.ext_exsel = ".xlsx"
 
 	@handle_file_errors
 	def load_json(self, path):
@@ -62,6 +66,9 @@ class ReadWrite:
 		with open(path, 'wb') as file:
 			file.write(data)
 
+	def write_pandas_to_excel(self, name_file, pd):
+		pd.to_excel(f"{self.pathStatistik}/{name_file}.xlsx", index=False)
+
 	'''
 	Сохранение в формате Parquet: (Эффективный бинарный формат)
 
@@ -73,11 +80,19 @@ class ReadWrite:
 	Он часто используется для больших наборов данных.
 
 	'''
+	def _replace_path_parquet(self, path):
+		_path = str(path)
+		_path = self.path_report+_path.replace(self.path_report, "")
+		_path = _path.replace(self.ext_pandes, "")+self.ext_pandes
+		return _path
+
 	@handle_file_errors
 	def load_pandas_parquet(self, path):
-		return pd.read_parquet(path)
+		_path = self._replace_path_parquet(path)
+		return pd.read_parquet(_path)
 
 	def write_pandas_parquet(self, path, df):
-		df.to_parquet(path, index=False)
+		_path = self._replace_path_parquet(path)
+		df.to_parquet(_path, index=False)
 
 
